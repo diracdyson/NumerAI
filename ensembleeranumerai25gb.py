@@ -729,8 +729,8 @@ class EnsembleModel():
            # predneut_cl=np.mean( [predneut_l,predneut_c],axis=0)
             self.SavePredictions(predneut_c,file_name,model_id,path='/content/drive/My Drive/numeraimodels',upload=up)
 
-public_id = 'AEVTGN4M22WXEV7IRJOITGU3FOXNBHSI'
-secret_key = '4OVJYAZIFT42T2UWHDITLBAK4TRDBUUFAW35QGUTBOC44MVEHL2DT54CY26AMOMC'
+public_id = 'your_public_id'
+secret_key = 'your_secret_key'
 e=EnsembleModel(public_id, secret_key, test_app =False)
 
 e.FloatEncode()
