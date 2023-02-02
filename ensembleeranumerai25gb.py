@@ -767,8 +767,8 @@ class EnsembleModel():
             results['prediction']=predneut_c
             results.to_csv('/content/drive/My Drive/firstsub.csv',index=False)
 
-public_id = 'AEVTGN4M22WXEV7IRJOITGU3FOXNBHSI'
-secret_key = '4OVJYAZIFT42T2UWHDITLBAK4TRDBUUFAW35QGUTBOC44MVEHL2DT54CY26AMOMC'
+public_id = 'id'
+secret_key = 'sk'
 e=EnsembleModel(public_id, secret_key, test_app =False)
 
 e.FloatEncode()
