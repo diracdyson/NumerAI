@@ -9,40 +9,42 @@ Original file is located at
 
 !cat /proc/cpuinfo
 
-from google.colab import drive
-
-from google.colab import files
-uploaded = files.upload()
-
-drive.mount('drive')
-
-X_train =pd.read_parquet('/content/drive/My Drive/CURRDATA/404_v3_train.parquet')
-
-X_train.fillna(0.50 )
-
-targetfeat = [c for c in X_train.columns if c.startswith('target')] 
-targetfeat_era = [t for t in targetfeat if t!= 'target' ]
-
-!pip install typing
-
-from typing import Self
-
+#have to run one by one 
 import pandas as pd
+import numpy as np
 from google.colab import drive
-#training_data = pd.read_csv("https://numerai-public-datasets.s3-us-west-2.amazonaws.com/latest_numerai_training_data.csv.xz")
-#validation_data = pd.read_csv("https://numerai-public-datasets.s3-us-west-2.amazonaws.com/latest_numerai_validation_data.csv.xz")
+from sklearn.preprocessing import LabelEncoder
 drive.mount('drive')
-t= pd.read_parquet("/content/drive/My Drive/Colab Notebooks/411_v3_numerai_live_data.parquet")
+def trpipeline(X_train,p=1):
 
-t.head()
+    X_train['era']=LabelEncoder().fit_transform(X_train['era'])
 
-#import pandas as pd
-#import numpy as np
-#c=np.zeros(340)
-#z = pd.DataFrame(c)
-#z.to_csv('/content/drive/My Drive/yurt.csv', encoding='utf-8', index=False)
+    
 
-#pd.read_csv('/content/drive/My Drive/yurt.csv')
+    eraf = np.arange(p,X_train['era'].unique().max(),4)
+
+    X_t1 = X_train[X_train['era'].isin(eraf)]
+    col = X_t1.drop(['era','data_type'], axis=1).columns
+    X_t1[col]=X_t1[col].astype('float32')
+   # X_t1.to_csv('/content/drive/My Drive/CURRDATA/era1.csv')
+
+   # h=pd.read_csv("/content/drive/My Drive/CURRDATA/era1.csv")
+    higher= X_t1[X_t1['era'] > X_t1['era'].median()]
+    higher.to_csv("/content/drive/My Drive/CURRDATA/highera.csv")
+
+def predpipeline(X_val):
+    X_val['era']=LabelEncoder().fit_transform(X_val['era'])
+
+    col2 =X_val.drop(['era','data_type'],axis=1).columns
+    X_val[col2]=X_val[col2].astype('float32')
+    X_val.to_csv('/content/drive/My Drive/CURRDATA/vera1.csv')
+# any other feature selection will be accounted for later on 
+
+X_in =pd.read_parquet('/content/drive/My Drive/CURRDATA/414_v3_numerai_training_data.parquet')
+#X_vin = pd.read_parquet('/content/drive/My Drive/CURRDATA/414_v3_numerai_validation_data.parquet')
+#X_livein = pd.read_parquet('/content/drive/My Drive/CURRDATA/414_v3_numerai_live_data.parquet')
+trpipeline(X_in)
+#predpipeline(X_vin)
 
 !pip install eli5 numerapi catboost lightgbm
 
@@ -66,6 +68,7 @@ from numerapi import NumerAPI
 from google.colab import drive
 from sklearn.model_selection._split import _BaseKFold, indexable, _num_samples
 from statsmodels.stats.outliers_influence import variance_inflation_factor
+from sklearn.feature_selection import mutual_info_regression
 #Init
 #LabelEncoder
 #OneHotAutoEncoder
@@ -103,9 +106,9 @@ class EnsembleModel():
         
         self.napi = NumerAPI(public_id=public_id, secret_key=secret_key)
         
-        X_train=  pd.read_parquet("/content/drive/My Drive/CURRDATA/409_v3_numerai_training_data.parquet")
-        targetfeat = [c for c in X_train.columns if c.startswith('target')] 
-        targetfeat_era = [t for t in targetfeat if t!= 'target' ] 
+        self.X_era=  pd.read_csv("/content/drive/My Drive/CURRDATA/highera.csv")
+        targetfeat = [c for c in self.X_era.columns if c.startswith('target')] 
+      #  targetfeat_era = [t for t in targetfeat if t!= 'target' ] 
        
             
           #  self.X_v = self.X_v.fillna(self.X_v.median(skipna= True))
@@ -113,35 +116,42 @@ class EnsembleModel():
         
 
         
-        y_train = X_train['target']
+     #   y_train = X_train['target']
 
-        self.X_t=X_train.drop(np.hstack((['data_type','target','id'],targetfeat)),axis=1)
+
+     #   self.X_t=X_train.drop(['id','data_type'],axis=1)
+
+    #    self.X_t = self.X_t.drop(targetfeat,axis=1)
+
       #  self.X_t = self.X_t.fillna(self.X_t.median(skipna=True))
 
-        self.y_t= y_train
+   #     self.y_t= y_train
      #   self.y_t = self.y_t.fillna(self.y_t.median(skipna=True ))
         
    # since live data is only one era, we need to use the median for all eras
         
             # if val_app:
-        X_val=pd.read_parquet("/content/drive/My Drive/CURRDATA/409_v3_numerai_validation_data.parquet")
-        self.X_v= X_val
-        y_val =X_val['target']
-        self.y_v=y_val
-        self.v_id = self.X_v['id']
-        self.X_v=self.X_v.drop(np.hstack((['data_type','target','id'],targetfeat)),axis=1)
+     #   X_val=pd.read_csv("/content/drive/My Drive/CURRDATA/vera1.csv")
+   #     self.X_v= X_val
+  #      y_val =X_val['target']
+   #     self.y_v=y_val
+   #     self.v_id = self.X_v.reset_index()['id']
+   #     self.X_v=self.X_v.drop(['id','data_type'],axis=1)
+   #     self.X_v= self.X_v.drop(targetfeat,axis=1)
+
+
         
         #self.X_live=[]
        # print('error')
         if test_app:
-            X_test= pd.read_parquet("/content/drive/My Drive/CURRDATA/411_v3_numerai_live_data.parquet")
+            self.X_live= pd.read_parquet("/content/drive/My Drive/CURRDATA/411_v3_numerai_live_data.parquet")
             targetfeat = [c for c in X_test.columns if c.startswith('target')] 
            # targetfeat_era = [t for t in targetfeat if t!= 'target' ] 
         #self.X_v= pd.concat([self.X_val,self.X_live[self.X_live['data_type']=='validation']])
-            self.X_live =X_test
           #  self.X_live = self.X_live [ self.X_live['data_type']=='live']
-            self.t_id = self.X_live['id']
-            self.X_live=self.X_live.drop(np.hstack((['data_type','target','id'],targetfeat)),axis=1)
+            self.t_id = self.X_live.reset_index()['id']
+            self.X_live=self.X_live.drop('data_type',axis=1)
+            self.X_live= self.X_live.drop(targetfeat,axis=1)
             self.cols = self.X_live.columns
             
         
@@ -150,12 +160,17 @@ class EnsembleModel():
           
 
         # neglect other targets
+      #  X_era= self.X_era
+           #     X_era = self.X_era[self.X_era[self.cat_col].isin(era_filters[m])]
+           
         
-        self.cols = self.X_t.columns
-        self.X_era = X_train.drop(np.hstack((['id','data_type'],targetfeat_era)),axis=1)
+        self.X_era = self.X_era.drop(['id','data_type'],axis=1)
+        self.y_t = self.X_era['target']
+        self.X_era =self.X_era.drop(targetfeat,axis=1)
         self.era_cols = self.X_era.columns
         self.cat_col='era'
-        self.num_col=self.X_live.drop(self.cat_col,axis =1).columns
+        self.num_col=self.X_era.drop(self.cat_col,axis =1).columns
+        #self.cols = self.X_era.drop('target',axis=1).columns
         self.drop_feat_imp1= None
         self.drop_feat_imp2 =None
         self.riskyF=None
@@ -164,6 +179,7 @@ class EnsembleModel():
         self.prop_ce=None
         self.prope_le=None
         self.era_overlap=4
+        self.X_era.head()
         # double check 
     #    print('second error')
      #   if self.X_t.isnull().sum() != 0:
@@ -199,45 +215,48 @@ class EnsembleModel():
 
     def LabelEncode(self):
         
-  #      self.X_t[self.cat_col]= LabelEncoder().fit_transform(self.X_t[self.cat_col])
-  #      self.X_era[self.cat_col]= LabelEncoder().fit_transform(self.X_era[self.cat_col]) 
+        self.X_t[self.cat_col]= LabelEncoder().fit_transform(self.X_t[self.cat_col])
+        self.X_era[self.cat_col]= LabelEncoder().fit_transform(self.X_era[self.cat_col]) 
         #init with empty array I trainval first save those models and reboot COLAB 
         #THIS IS THE ONLY WAY TO DO WITHOUT COLAN PREMIUM 
         # not enough RAM to load both at the same time 
      #   if not self.X_v.empty:
- #       self.X_v[self.cat_col]= LabelEncoder().fit_transform(self.X_v[self.cat_col]) 
+    #    self.X_v[self.cat_col]= LabelEncoder().fit_transform(self.X_v[self.cat_col]) 
         
-  #      self.X_t= pd.DataFrame(self.X_t)
-   #     self.X_t.columns = self.cols
+        self.X_t= pd.DataFrame(self.X_t)
+        self.X_t.columns = self.cols
 
-       # self.X_era= pd.DataFrame(self.X_era)
-       # self.X_era.columns = self.era_cols
+        self.X_era= pd.DataFrame(self.X_era)
+        self.X_era.columns = self.era_cols
 
-        #self.X_v= pd.DataFrame(self.X_v)
-       # self.X_v.columns = self.cols
+  #      self.X_v= pd.DataFrame(self.X_v)
+   #     self.X_v.columns = self.cols
 
 
    #     print('neut group test {}'.format(self.NormNeutralizedPredGroup(self.X_v,self.num_col,self.y_v,0.1)))
     #    print('neut test {}'.format(self.NormNeutralizedPred(self.X_v,self.num_col,self.y_v.values.reshape(-1,1),0.1)))
     #        pass
       #  
-        self.X_live[self.cat_col]= LabelEncoder().fit_transform(self.X_live[self.cat_col])
-        self.X_live.columns = self.cols
+       # self.X_live[self.cat_col]= LabelEncoder().fit_transform(self.X_live[self.cat_col])
+        #self.X_live.columns = self.cols
        #     pass 
         return self
    # reduce memory RAM
    #quantization removes too much info
     def FloatEncode(self,d_type='float32'):
        
-     #   self.X_t[self.num_col]=self.X_t[self.num_col].astype(d_type)
+   #     self.X_t[self.num_col]=self.X_t[self.num_col].astype(d_type)
     #    self.y_t = self.y_t.astype(d_type)
-   #     self.X_era[self.num_col] = self.X_era[self.num_col].astype(d_type)
+
+
+
+        self.X_era[self.num_col] = self.X_era[self.num_col].astype(d_type)
         #if not self.X_v.empty():
-   #     self.X_v[self.num_col]= self.X_v[self.num_col].astype(d_type)
-   #     self.y_v=self.y_v.astype(d_type)
-            
+     #   self.X_v[self.num_col]= self.X_v[self.num_col].astype(d_type)
+      #  self.y_v=self.y_v.astype(d_type)
+     #       
         #if not self.X_live.empty():
-        self.X_live[self.num_col] = self.X_live[self.num_col].astype(d_type)
+   #     self.X_live[self.num_col] = self.X_live[self.num_col].astype(d_type)
          #    pass
         
         return self
@@ -265,26 +284,26 @@ class EnsembleModel():
     def FeatImpSelection(self,init_paramsl,gridft,n_splits=3,perc=0.90,perc_2 = 0.80,feat_color='skyblue'):
         
         st_time=time.time()
-        ftss=KFold(n_splits=n_splits,shuffle=True,random_state=None)
+      #  ftss=KFold(n_splits=n_splits,shuffle=True,random_state=None)
         # grid search takes up far too much time on v4 but not v3
         lg_fu= lgb(**init_paramsl)
       #  print(len(self.X_t.columns))
         
         
-        gft= GridSearchCV(lg_fu,gridft,cv=(ftss))
-        gft.fit(self.X_t,self.y_t)
+       # gft= GridSearchCV(lg_fu,gridft)
+       # gft.fit(self.X_era,self.y_t)
 
         
 
-        lg_fu.set_params(**gft.best_params_)
-        lg_fu.fit(self.X_t,self.y_t,feature_name='auto')
-        boost = lg_fu.booster_
+    #    lg_fu.set_params(**gft.best_params_)
+        lg_fu.fit(self.X_era,self.y_t,feature_name='auto')
+      #  boost = lg_fu.booster_
     
-        ft_name1=boost.feature_name()
-        ft_name2=self.X_t.columns
+      #  ft_name1=boost.feature_name()
+        ft_name=self.X_era.columns
     
-        if (ft_name1==ft_name2).all():
-            ft_name=ft_name2
+       # if (ft_name1==ft_name2).all():
+      #      ft_name=ft_name2
     #print(ft_name)
         ft_imp=lg_fu.feature_importances_
    # print(ft_imp)
@@ -292,63 +311,66 @@ class EnsembleModel():
       
     
     #plt.bar(ft_name,ft_imp,color='skyblue',)
-        plot_importance(lg_fu,figsize=(50,30),color=feat_color)
-      #  plt.show()
-    #plt.xlabel('Features')
-    #plt.ylabel('Gini Split based Feature Importance')
-    
+        plot_importance(lg_fu,figsize=(100,160),color=feat_color)
+        
+        plt.xlabel('Features')
+        plt.ylabel('Gini Split based Feature Importance')
+        plt.show()
     
         sort_imp_ind= np.argsort(-ft_imp)
     #print(sort_imp_ind)
-        sorted_ft_name= ft_name[sort_imp_ind]
+        sorted_ft_name= self.X_era.columns[sort_imp_ind]
         ft_name_selected= sorted_ft_name[0:int(perc * len(sorted_ft_name))]
     #print(ft_name_selected)
 
-        drop_col=self.X_t.drop(ft_name_selected,axis=1).columns
-        self.drop_feat_imp1 = drop_col
+        self.drop_feat_imp1=self.X_era.drop(ft_name_selected,axis=1).columns
         
-        self.X_t = self.X_t.drop(self.drop_feat_imp1,axis=1)
-        self.X_v = self.X_v.drop(self.drop_feat_imp1,axis=1)
-        self.X_era = self.X_era.drop(self.drop_feat_imp1,axis=1 )
-        curr_cols = self.X_t.columns 
+      #  
+      #  self.X_t = self.X_t.drop(self.drop_feat_imp1,axis=1)
+     #   self.X_v = self.X_v.drop(self.drop_feat_imp1,axis=1)
+        #self.X_era = self.X_era.drop(self.drop_feat_imp1,axis=1 )# declear below 
+     #   curr_cols = self.X_era.drop(self.drop_feat_imp1,axis=1 ).columns 
         #rf = RandomForestRegressor().fit(self.X_t,self.y_t)
-        print('Now starting PI')
-        perminst = PermutationImportance(lg_fu, cv=ftss)
-        perminst.fit(self.X_t,self.y_t)
+        #print('Now starting PI')
+     #   perminst = PermutationImportance(lg_fu)#cv 
+      #  perminst.fit(self.X_era,self.y_t)
         
 # perm.feature_importances_ attribute is now available, it can be used
 # for feature selection - let's e.g. select features which increase
 # accuracy by at least 0.05:
         # MSE should be auto implemented
-        PIFilter = SelectFromModel(perminst, threshold=0.05, prefit=True)
+    #    PIFilter = SelectFromModel(perminst, threshold=0.05, prefit=True)
 
         
        # self.X_t = PIFilter.transform(self.X_t)
         #self.X_v= PIFilter.transform(self.X_v)
        # self.X_era= PIFilter.transform(self.X_era)
-        ft_imp_2 = perminst.feature_importances_
+      #  ft_imp_2 = perminst.feature_importances_
        # plot_importance(perminst,figsize=(50,30),color=feat_color)
-    
+#        ft_imp_2 = mutual_info_regression(self.X_era, self.y_t)
+
     #plt.bar(ft_name,ft_imp,color='skyblue',)
       #  plot_importance(lg_fu,figsize=(50,30),color=feat_color)
       #  plt.show()
     #plt.xlabel('Features')
     #plt.ylabel('Gini Split based Feature Importance')
+
     
     
-        sort_imp_ind_2= np.argsort(-ft_imp_2)
+  #      sort_imp_ind_2= np.argsort(-ft_imp_2)
     #print(sort_imp_ind)
-        sorted_ft_name_2= curr_cols[sort_imp_ind_2]
-        ft_name_selected_2= sorted_ft_name_2[0:int(perc_2 * len(sorted_ft_name_2))]
+  #      sorted_ft_name_2= self.X_era.columns[sort_imp_ind_2]
+  #      ft_name_selected_2= sorted_ft_name_2[0:int(perc_2 * len(sorted_ft_name_2))]
     #print(ft_name_selected)
 
-        drop_col_2=self.X_t.drop(ft_name_selected_2,axis=1).columns
-        self.drop_feat_imp2 = drop_col_2
+  #      self.drop_feat_imp2=self.X_era.drop(ft_name_selected_2,axis=1).columns
+      #   = drop_col_2
         
-        self.X_t = self.X_t.drop(self.drop_feat_imp2,axis=1)
-        self.X_v = self.X_v.drop(self.drop_feat_imp2,axis=1)
-        self.X_era = self.X_era.drop(self.drop_feat_imp2,axis=1 )
-       # print(len(self.X_t.columns))
+    #    self.X_t = self.X_t.drop(self.drop_feat_imp2,axis=1)
+    #    self.X_v = self.X_v.drop(self.drop_feat_imp2,axis=1)
+       # self.X_era = self.X_era.drop(self.drop_feat_imp1,axis=1 )
+  #      self.X_era = self.X_era.drop(self.drop_feat_imp2,axis=1 )
+    #   # print(len(self.X_t.columns))
         # how to obtain columns dropped after transform
         # use documentation for selectfrom model
        # self.drop_feat_imp2 = [curr_cols.remove(e) for e in PIFilter.get_feature_names_out()]
@@ -364,11 +386,11 @@ class EnsembleModel():
         
         
         drop_feat= pd.DataFrame()
-        drop_feat2= pd.DataFrame()
+#        drop_feat2= pd.DataFrame()
         drop_feat['drop_feat1']= self.drop_feat_imp1
-        drop_feat2['drop_feat2']= self.drop_feat_imp2
+ #       drop_feat2['drop_feat2']= self.drop_feat_imp2
         drop_feat.to_csv('/content/drive/My Drive/drop_feat.csv',encoding='utf-8', index=False)
-        drop_feat2.to_csv('/content/drive/My Drive/drop_feat2.csv',encoding='utf-8', index=False)
+  #      drop_feat2.to_csv('/content/drive/My Drive/drop_feat2.csv',encoding='utf-8', index=False)
         print('Time taken {}'.format(time.time()-st_time))
         return self
         
@@ -504,16 +526,16 @@ class EnsembleModel():
           
       #  print("for light gbm the Val Corr is {}".format(correlation_score(y_train,glg.predict(X_train))))            
               #  pred_l+= glg.predict(self.X_v)/n_splits 
-                pred_c+= cbr.predict(self.X_v)/n_splits
+             #   pred_c= cbr.predict(self.X_v)/n_splits
             #pred_l+= glg.predict(X_test)/N_Fold
             
          #   pred_lt += glg.predict(X_train)
                 if models_app:
                #     cur_key1='LightGBMReg Model @ TS Fold '+str(fold_)
-                    cur_key2='CatBoostReg Model @ TS Fold ' + str(fold_)
+                #    cur_key2='CatBoostReg Model @ TS Fold ' + str(fold_)
                 # append to dict for reproduction X_test is too much RAM seperate process VM
                 #    models[cur_key1]=(glg)
-                    models[cur_key2]=(cbr)                  
+                #    models[cur_key2]=(cbr)                  
                     self.SaveModel(cbr,'model CBR @ Fold ' +str(fold_),path='/numeraimodels')
                     pass
    # end of epoch final func protocol 
@@ -592,29 +614,35 @@ class EnsembleModel():
         
         
     def FitEnsembleOverEra(self,init_paramsc,gridc,
-    Npochs = 1,n_splits= 3,sub_n_splits=3,proportion_m=0.1,models_app=False,plt=False,neut=True,shuffle=True, override=True,diagnostics =True)->dict:
+    Npochs = 1,n_splits= 3,sub_n_splits=3,proportion_m=0.1,models_app=False,plt=False,neut=True,shuffle=True, override=False,diagnostics =True)->dict:
         st_time=time.time()
         #self.X_t.head()
        # lg_s=[]
         cbr_s=[]
-        era_filters=[]
-        pred_c=np.zeros((len(self.X_v[self.cat_col].values),self.era_overlap))
+        X_eras=[]
+        y_eras=[]
+       # era_filters=[]
+        #pred_c=np.zeros((len(self.X_v[self.cat_col].values),self.era_overlap))
      #   print('static method test {}'.format(self.RiskiestFeat(self.X_v,self.y_v,np.ones(len(self.y_v.values)),0.3)))
         if override:
             self.drop_feat_imp1= pd.read_csv('/content/drive/My Drive/drop_feat.csv')['drop_feat1'].values
-            self.drop_feat_imp2= pd.read_csv('/content/drive/My Drive/drop_feat2.csv')['drop_feat2'].values
+           # self.drop_feat_imp2= pd.read_csv('/content/drive/My Drive/drop_feat2.csv')['drop_feat2'].values
             self.X_era = self.X_era.drop(self.drop_feat_imp1,axis =1)
-            self.X_era = self.X_era.drop(self.drop_feat_imp2,axis =1)
+           # self.X_era=self.X_era.drop('Unnamed: 0',axis=1)
+         #   self.X_era = self.X_era.drop(self.drop_feat_imp2,axis =1)
        # pred_l=np.zeros((len(self.X_t[self.cat_col].values),era_overlap))
        # tss =KFold(n_splits= n_splits, shuffle=shuffle, random_state= None)
         sub_tss =KFold(n_splits = sub_n_splits,shuffle=shuffle,random_state=None)
-        for i in range(1,self.era_overlap+1):
+    #    for i in range(1,self.era_overlap+1):
             # shifted by 1 for era_ overlap desig
         #    lg_s.append(lgb(**init_paramsl))
+        for m in range(0,2):
             cbr_s.append(CatBoostRegressor(**init_paramsc))
+            #X_eras.append(self.X_era.iloc[m*self.X_era.shape[0]/2:self.X_era.shape[0]/2+ m* self.X_era.shape[0]/2,:])
+           # y_eras.append(self.y_t.iloc[m*self.X_era.shape[0]/2:self.X_era.shape[0]/2+ m* self.X_era.shape[0]/2])
          #   print('error')
-            era_filters.append(np.arange(i,np.max(self.X_t[self.cat_col].values),self.era_overlap).T)
-        era_filters= np.array(era_filters)
+            #era_filters.append(np.arange(i,np.max(self.X_t[self.cat_col].values),self.era_overlap).T)
+     #   era_filters= np.array(era_filters)
         #print(era_filters.shape)
         
         #era_filters=np.array(era_filters)
@@ -623,20 +651,17 @@ class EnsembleModel():
             models=dict()
         
         for n in range(Npochs):
-            for m in range(0,self.era_overlap):
+            for m in range(0,2):
                 # filter by eras as suggested in tips and analysis
                # print('error2')
-
-                X_era = self.X_era[self.X_era[self.cat_col].isin(era_filters[m])]
-                X_te = X_era.drop('target', axis =1 )
-                y_te = X_era['target']
-                model_c = self.LoadModel('CatBoostReg Model @ Fold '+' Model_number era: '+str(m),path='/content/drive/My Drive/numeraimodels/')
+                
+              #  model_c = self.LoadModel('CatBoostReg Model @ Fold '+' Model_number era: '+str(m),path='/content/drive/My Drive/numeraimodels/')
 
                 # splitting accross k fold
               #  for fold_,(tr_idx,val_idx) in enumerate(tss.split(X_te,y_te)):
                     # sub_tss acts as a mini k-fold across kfold to obtain MSE scoring based local fold hyperparamters
 
-              #  model_c.grid_search(gridc,X_te,y_te,cv=sub_tss)
+                cbr_s[m].grid_search(gridc,self.X_era.iloc[int(m*self.X_era.shape[0]/2):int(self.X_era.shape[0]/2 + self.X_era.shape[0]/2*m),: ],self.y_t.iloc[int(m*self.X_era.shape[0]/2):int(self.X_era.shape[0]/2 + self.X_era.shape[0]/2*m)],cv=sub_tss)
         #            glg_e= GridSearchCV(lg_s[m],param_grid=gridl, cv=tss)
          #           glg_e.fit(gridc,X_te.iloc[tr_idx],y_te.iloc[tr_idx],cv=tss,plot=plt)
                     
@@ -648,48 +673,48 @@ class EnsembleModel():
              #       ,self.CorrelationScore(y_te.iloc[val_idx],glg_e.predict(X_te.iloc[val_idx]))))
                     
                     
-                print("for CatBoostReg @ {} Fold the Training Corr is {}".format(m
-                              ,self.CorrelationScore(y_te,model_c.predict(X_te))))
+                print("for CatBoostReg @ {} Fold/Model the Training Corr is {}".format(m
+                              ,self.CorrelationScore(self.y_t.iloc[int(m*self.X_era.shape[0]/2):int(self.X_era.shape[0]/2 + self.X_era.shape[0]/2*m)],cbr_s[m].predict(self.X_era.iloc[int(m*self.X_era.shape[0]/2):int(self.X_era.shape[0]/2 + self.X_era.shape[0]/2*m),: ]))))
             #    print("for CatBoostReg @ sub {} Fold the Val Corr is {}".format(m
                 #              ,self.CorrelationScore(y_te,model_c.predict(X_te))))
 
 
                     
               #      pred_l[:,m]+= (glg_e.predict(self.X_v))/n_splits 
-                pred_c[:,m]+= ( model_c.predict(self.X_v))
+                pred_c += ( cbr_s[m].predict(self.X_era.iloc[int(m*self.X_era.shape[0]/2):int(self.X_era.shape[0]/2 + self.X_era.shape[0]/2*m),: ]))/2
                   #  f=self.RiskiestFeat(self.X_v, self.y_v, pred_c[:,m],0.3)
                  #   print("riskiest test {} ".format(f))
                    # print('neut test {}'.format(self.NormNeutralizedPred(self.X_v,f,pred_c[:,m],0.1)))
                    # already ran set to false
-                if models_app:
+             #   if models_app:
                #         cur_key1='LightGBMReg Model @ TS Fold '+str(fold_) + 'Model number:'+int(m)
-                    cur_key2='CatBoostReg Model @ TS Fold ' + ' Model number era: ' +str(m)
+                 #   cur_key2='CatBoostReg Model @ TS Fold ' + ' Model number era: ' +str(m)
                  # append to dict for reproduction X_test is too much RAM seperate process VM
                 #        models[cur_key1]=(glg_e)
-                    models[cur_key2]=(cbr_s[m])
-                    self.SaveModel(cbr_s[m],'CatBoostReg Model @ Fold '+' Model_number era: '+str(m),path='/content/drive/My Drive/numeraimodels/')
-                    pass
-
+                 #   models[cur_key2]=(cbr_s)
+                self.SaveModel(cbr_s[m],'eraCatBoostReg Model'+' Model_number: '+str(m),path='/content/drive/My Drive/numeraimodels/')
+                 #   pass
+#
                    # pred_le=np.mean(pred_l,axis=0)
-        pred_ce=np.mean(pred_c,axis=1).reshape(-1,1)
-        print(pred_ce.shape)
-                    # mean over eras of models
+     #   pred_ce=pred_c.reshape(-1,1)
+      #  print(pred_ce.shape)
+    #                # mean over eras of models
                     # now over models
                   #  pred_cle = np.mean([pred_ce,pred,le],axis=0)
          # find the riskiest features to neutralize for to reduece overfitting 
-        self.riskyF= self.RiskiestFeat(self.X_v, self.y_v, pred_ce,0.3)
-                # google drive is mounted
-        riskFrame = pd.DataFrame()
-        riskFrame['risk']=self.riskyF
-        riskFrame.to_csv('/content/drive/My Drive/riskf.csv',encoding='utf-8', index=False)
+       # self.riskyF= self.RiskiestFeat(self.X_v, self.y_v, pred_ce,0.3)
+      #          # google drive is mounted
+      #  riskFrame = pd.DataFrame()
+      #  riskFrame['risk']=self.riskyF
+      #  riskFrame.to_csv('/content/drive/My Drive/riskf.csv',encoding='utf-8', index=False)
  #   pred2t=interpscale(pred_lt,0 ,1 )
     #   print(" for light gbm the Training Corr is { }".format(correlation_score(y_train,pred2t)))
                  #    print(" for LightGBMReg the Val Corr is {}".format(self.CorrelationScore(self.y_v,pred_le)))
-        print(" for CatBoostReg the Val Cross is {}".format(self.CorrelationScore(self.y_v,pred_ce)))
+      #  print(" for CatBoostReg the Val Cross is {}".format(self.CorrelationScore(self.y_v,pred_ce)))
                   #   print(" for bagged ensemble of LightGBMReg + CatBoostReg the Val Cross is {}".format(self.CorrelationScore(self.y_v,pred_cle)))
                     
 
-        if neut:
+      #  if neut:
            # prop=np.arange(0.05,1,0.05)
 
                    # predneut_l = [self.CorrelationScore(self.y_v
@@ -703,38 +728,47 @@ class EnsembleModel():
            # predneut_c = [self.CorrelationScore(self.y_v,self.NormNeutralizedPred(self.X_v,self.riskyF,pred_ce,c)) for c in prop ]
          #   neutindex_c=np.where(predneut_c==np.max(predneut_c ))
          #   self.prop_ce =prop[neutindex_c]
-            CatBoostResNorm = self.NormNeutralizedPred(self.X_v,self.riskyF,pred_ce,proportion=proportion_m)
-            print(" for CatBoostReg the Neutralized Val Corr is {}".format(self.CorrelationScore(self.y_v,CatBoostResNorm )))
-            diagf = pd.DataFrame()
-            diagf['id']=self.v_id
-            diagf['prediction']=CatBoostResNorm
-            diagf.to_csv('/content/drive/My Drive/diagf.csv',encoding ='utf-8',index=False)
+      #      CatBoostResNorm = self.NormNeutralizedPred(self.X_v,self.riskyF,pred_ce,proportion=proportion_m)
+       #     print(" for CatBoostReg the Neutralized Val Corr is {}".format(self.CorrelationScore(self.y_v,CatBoostResNorm )))
+       #     diagf = pd.DataFrame()
+       #     diagf['id']=self.v_id
+       #     diagf['prediction']=CatBoostResNorm
+       #     diagf.to_csv('/content/drive/My Drive/diagf.csv',encoding ='utf-8',index=False)
 
                #     EnsembleNormRes = np.mean([LightGBMResNorm,CatBoostResNorm],axis=0)
                 #    predneut_cl = self.CorrelationScore(self.y_v, EnsembleNormRes )
                  #   print(" for CatBoostReg the Neutralized Val Corr is {} and optimal with proportions in LGBM {} and CBR {}".format(
                   #       predneut_cl,prop[neutindex_l],prop[neutindex_c])
-            pass
+           # pass
      # manipulate  model to  afterwards
-        if models_app:
-            print("Total time for ensemble train_val is {}".format((time.time()-st_time)))
-            return models
+       # if models_app:
+       #     print("Total time for ensemble train_val is {}".format((time.time()-st_time)))
+       #     return models
+        
+        
+        print("for CatBoostReg @ {} Fold the Training Corr is {}".format(m
+                              ,self.CorrelationScore(self.y_t.iloc[m*self.X_era.shape[0]/2:self.X_era.shape[0]/2 + self.X_era.shape[0]/2*m],pred_c)))
+        
+        
+        print("Total time for ensemble train_val is {}".format((time.time()-st_time)))
  
     def PredictSubmitEnsembleOverEra(self,file_name,model_id,n_splits=3,proportion_m = 0.1,FeatImpSelection=True,up=False):
       
         if __name__=='__main__':
-            pred_c=np.zeros((len(self.X_live[self.cat_col].values.reshape(-1,1)),self.era_overlap))
+            pred_ct=np.zeros((len(self.X_live[self.cat_col].values.reshape(-1,1))))
+            pred_cv=np.zeros((len(self.X_v[self.cat_col].values.reshape(-1,1))))
             # NEW SESSION STARTED after training
-            self.riskyF = pd.read_csv('/content/drive/My Drive/riskf.csv')['risk'].values
+            
+            #self.riskyF = pd.read_csv('/content/drive/My Drive/riskf.csv')['risk'].values
           #  pred_l= np.zeros(len(self.X_live[self.cat_col].values.reshape(-1,1),era_overlap)) 
-            for m in range(0,self.era_overlap):
+            for m in range(0,1):
 
                 
              #       cur_key1='LightGBMReg Model @ TS Fold '+str(fold_) +  'Model number:'+int(m)
               #      cur_key2='CatBoostReg Model @ TS Fold ' + str(fold_) +  'Model number:'+int(m)
      
                #     model_l = models[cur_key1]
-                model_c = self.LoadModel('CatBoostReg Model @ Fold '+' Model_number era: '+str(m),path='/content/drive/My Drive/numeraimodels/')
+                model_c = self.LoadModel('eraCatBoostReg Model @ Fold '+' Model_number era: '+str(m),path='/content/drive/My Drive/numeraimodels/')
                     
                 #        self.SaveModel(model_l,'model LGB @ Fold '+str(fold_)+'Model_number:'+int(m),path='/numeraimodels')
                  #       self.SaveModel(model_c,'model CBR @ Fold ' +str(fold_)+'Model_number:'+int(m),path='/numeraimodels')
@@ -742,33 +776,44 @@ class EnsembleModel():
         
                    # pred_l[:,m] += model_l.predict(self.X_live.drop('id',axis= 1))/n_splits
                 if FeatImpSelection:
-                    self.drop_feat_imp1= pd.read_csv('/content/drive/My Drive/drop_feat.csv')['drop_feat1'].values
-                    self.drop_feat_imp2= pd.read_csv('/content/drive/My Drive/drop_feat2.csv')['drop_feat2'].values
-                    drop_col1 = np.intersect1d(self.drop_feat_imp1,self.cols)
-                    drop_col2 = np.intersect1d(self.drop_feat_imp2,self.cols)
-                    self.X_live.drop(drop_col1,axis= 1)
-                    self.X_live.drop(drop_col2,axis= 1)
+                   # self.drop_feat_imp1= pd.read_csv('/content/drive/My Drive/drop_feat.csv')['drop_feat1'].values
+                 #   self.drop_feat_imp2= pd.read_csv('/content/drive/My Drive/drop_feat2.csv')['drop_feat2'].values
+                 #   drop_col1 = np.intersect1d(self.drop_feat_imp1,self.cols)
+                  #  drop_col2 = np.intersect1d(self.drop_feat_imp2,self.cols)
+                 #   self.X_live.drop(self.drop_feat_imp1,axis= 1)
+                    self.X_live.drop(self.drop_feat_imp2,axis= 1)
+                  #  self.X_v.drop(self.drop_feat_imp1,axis=1)
+                    self.X_v.drop(self.drop_feat_imp2,axis=1)            
+
 
                     
                       
 
-                pred_c[:, m] += model_c.predict(self.X_live)
+                pred_ct= model_c.predict(self.X_live)
+                pred_cv= model_c.predict(self.X_v)
     
            # pred_le = np.mean(pred_l,axis=0)
-            pred_ce = np.mean(pred_c,axis=1).reshape(-1,1)
-
+            #pred_ce = np.mean(pred_c,axis=1).reshape(-1,1)
+            self.riskyF= self.RiskiestFeat(self.X_v, self.y_v, pred_cv,0.3)
            # predneut_l = self.NormNeutralizedPredGroup(self.X_live.drop('id',axis=1),self.riskyF,pred_le,self.prop_le)
-            predneut_c = self.NormNeutralizedPred(self.X_live,self.riskyF,pred_ce,proportion_m)
+            predneut_ct = self.NormNeutralizedPred(self.X_live,self.riskyF,pred_ct,proportion_m)
+            predneut_cv = self.NormNeutralizedPred(self.X_v,self.riskyF,pred_cv,proportion_m)
      
            # predneut_cl=np.mean( [predneut_l,predneut_c],axis=0)
             #self.SavePredictions(predneut_c,file_name,model_id,path='/content/drive/My Drive/numeraimodels',upload=up) 
+            resultsv=pd.DataFrame()
+            resultsv['id']= self.v_id
+            resultsv['prediction']=predneut_cv
+            resultsv.to_csv('/content/drive/My Drive/valch.csv',index=False)
+            
+            
             results=pd.DataFrame()
             results['id']= self.t_id
-            results['prediction']=predneut_c
+            results['prediction']=predneut_ct
             results.to_csv('/content/drive/My Drive/firstsub.csv',index=False)
 
-public_id = 'id'
-secret_key = 'sk'
+public_id = 'AEVTGN4M22WXEV7IRJOITGU3FOXNBHSI'
+secret_key = '4OVJYAZIFT42T2UWHDITLBAK4TRDBUUFAW35QGUTBOC44MVEHL2DT54CY26AMOMC'
 e=EnsembleModel(public_id, secret_key, test_app =False)
 
 e.FloatEncode()
@@ -802,7 +847,6 @@ gridc = {
 
 
 
-e.FitEnsembleOverEra(init_paramsc,gridc)
+e.FitEnsembleOverEra(init_paramsc,gridc,override = True)
 
 e.PredictSubmitEnsembleOverEra('firstsub',111)
-
