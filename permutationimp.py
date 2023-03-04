@@ -1,3 +1,10 @@
+from sklearn.feature_selection import SelectFromModel
+from eli5.sklearn import PermutationImportance
+import pandas as pd
+import numpy as np
+import time
+import matplotlib.pyplot as plt
+
 class FeatSelect():
     def __init__(self,X_v,y_v):
        
@@ -36,7 +43,6 @@ class FeatSelect():
 
         drop_feat2['drop_feat1']= self.drop_feat_imp2
        # drop_feat2.to_csv('/content/drive/My Drive/CURRDATA/PIdrop_feat'+str(self.ms)+'.csv',encoding='utf-8', index=False)
-
 
         st_time4=time.time()
 
