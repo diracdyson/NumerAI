@@ -62,8 +62,6 @@ class PiEnsembleModel():
 
         self.drop_feat_imp1  = None
         
-        self.drop_feat_imp2 = None 
-
         self.riskyF = None
         
     def Init(self,trainvalapp= True, test_app= False):
@@ -80,23 +78,11 @@ class PiEnsembleModel():
 
         # take every fourth 
             if tr:
-        
                 eraf = np.arange(self.X_era['era'].min(),self.X_era['era'].max(),4)
-               # print(eraf)
-                X =  X[ X['era'].isin(eraf)]
-        
-        # take upper half of more recent data ram threshold on colab 
-
-         #   X =  X.iloc[int( X.shape[0]/2): X.shape[0]]
-
-          #  y = X['target']
-            # remove useless feat
+                X =  X[ X['era'].isin(eraf)
             
             X= X.drop('data_type', axis =1 )
-            
-        #    idx = X.reset_index()['id']    
-            
-        
+  
             return X
 
         def liveprep(live):
@@ -135,7 +121,6 @@ class PiEnsembleModel():
 
             self.X_v.to_csv('/content/drive/My Drive/CURRDATA/'+str(self.curr_round)+'vera'+str(1)+'.csv')
 
-
         elif test_app:
             
             self.X_live = pd.read_parquet('/content/drive/My Drive/CURRDATA/'+str(self.curr_round) + '_v3_numerai_live_data.parquet')
@@ -146,9 +131,7 @@ class PiEnsembleModel():
 
         self.X_era.head()
 
-
     def LoadData(self, trainvalapp=True, test_app = False):
-
 
         if trainvalapp:
         
@@ -161,9 +144,7 @@ class PiEnsembleModel():
             self.X_era = self.X_era.drop(['target','id'],axis =1 )
         
             self.X_era['era'] =  self.X_era['era'].astype('int64')
-        
-        #self.X_era = self.X_era.dropna()
-    
+       
             self.X_v = pd.read_csv('/content/drive/My Drive/CURRDATA/'+str(self.curr_round)+'vera'+str(1)+'.csv')
         
             self.y_v = self.X_v['target']
@@ -173,8 +154,7 @@ class PiEnsembleModel():
             self.X_v['era'] = self.X_v['era'].astype('int64')
         
             self.X_v= self.X_v.drop(['target','id'],axis=1)
-
-
+            
         if test_app:
             self.X_live = pd.read_csv('/content/drive/My Drive/CURRDATA/'+str(self.curr_round)+'liveera'+str(1)+'.csv')
             
@@ -188,8 +168,6 @@ class PiEnsembleModel():
      #   print('neut test {}'.format(self.NormNeutPred(self.X_v, self.X_v.columns, self.y_v.values.reshape(-1,1),0.4)))
 
         return self
-
-
 
 
     def BoostFeatSelect(self,gridg,n_splits =3 ,perc = 0.90,perc2= 0.95):
@@ -215,8 +193,6 @@ class PiEnsembleModel():
    #     "colsample_bytree" : 0.1,
        # "tree_method" : 'gpu_hist'
         }
-    
-        
      #   sub_tss= KFold(n_splits = 5 )
 
       #  bscv = BayesSearchCV(lg_fu,gridg, cv = sub_tss)
@@ -235,13 +211,11 @@ class PiEnsembleModel():
             return {'loss': score, 'status': STATUS_OK}   
 
 
-
         def opt(trials,gridg):
             
             best = fmin(score,gridg,algo = tpe.suggest, max_evals = 10)
 
             return best
-
 
         trials = Trials()
 
@@ -265,8 +239,6 @@ class PiEnsembleModel():
         ft_name1= sorted_ft_name[0:int(perc * len(sorted_ft_name))]
 
         self.drop_feat_imp1 = self.X_era.drop(ft_name1, axis=1 ).columns
-
-
           
         drop_feat= pd.DataFrame()
 #        drop_feat2= pd.DataFrame()
@@ -280,7 +252,7 @@ class PiEnsembleModel():
 
       
 
-        
+
         return self
 
 
@@ -335,25 +307,7 @@ class PiEnsembleModel():
         if override:
 
 
-
-
-            
             self.drop_feat_imp1 = pd.read_csv('/content/drive/My Drive/CURRDATA/MDAdrop_feat'+str(self.ms)+'.csv')['drop_feat1'].values
-            
-       #     self.drop_feat_imp2 = pd.read_csv('/content/drive/My Drive/CURRDATA/PIdrop_feat'+str(self.ms)+'.csv')['drop_feat1'].values
-
-
-            # remove duplicates 
-         #   dupid = np.where(self.drop_feat_imp2 == np.intersect1d(self.drop_feat_imp1,self.drop_feat_imp2))
-            
-          #  print(dupid)
-
-            
-        #    print(np.intersect1d(self.drop_feat_imp1,self.drop_feat_imp2))
-            
-           # self.drop_feat_imp2 = np.delete(self.drop_feat_imp2,dupid)
-
-          #  print(self.drop_feat_imp2)
         
             self.X_era= self.X_era.drop(self.drop_feat_imp1,axis = 1)
          #   self.X_era = self.X_era.drop(self.drop_feat_imp2,axis = 1)
@@ -442,7 +396,6 @@ class PiEnsembleModel():
 
 
 
-
     def PredictSubmit(self,model_id,n_splits = 3,FeatImpSelection= True):
 
 
@@ -467,7 +420,6 @@ class PiEnsembleModel():
         #        self.X_live= self.X_live.drop( self.drop_feat_imp2,axis = 1)
 
 
-
             model_g = self.LoadModel('XGBoostRegressor Model'+' Model_number: '+str(self.ms),'g',path='/content/drive/My Drive/f0/numeraimodels/')
 
             pred_ct += model_g.predict(self.X_live)/2
@@ -482,14 +434,13 @@ class PiEnsembleModel():
         results.to_csv('/content/drive/My Drive/'+'ROUND'+str(self.curr_round)+'.csv')
 
 ### SET P value in INIT b4 running
-public_id = 'AEVTGN4M22WXEV7IRJOITGU3FOXNBHSI'
-secret_key = '4OVJYAZIFT42T2UWHDITLBAK4TRDBUUFAW35QGUTBOC44MVEHL2DT54CY26AMOMC'
+public_id = 'enter id '
+secret_key = 'sec'
 e=PiEnsembleModel(public_id, secret_key,1)
 
 e.Init()
 
 e.LoadData()
-
 
 
 gridg = {
@@ -504,11 +455,11 @@ gridg = {
     }
 e.BoostFeatSelect(gridg)
 
-gridg = {
+gridg2 = {
         'max_depth':hp.choice('max_depth', np.arange(4, 7, 1, dtype=int)),
-       # 'colsample_bytree':hp.quniform('colsample_bytree', 0.5, 1.0, 0.1),
-      # 'min_child_weight':hp.choice('min_child_weight', np.arange(250, 350, 10, dtype=int)),
-      #  'subsample':hp.quniform('subsample', 0.7, 0.9, 0.1),
+        'colsample_bytree':hp.quniform('colsample_bytree', 0.5, 1.0, 0.1),
+       'min_child_weight':hp.choice('min_child_weight', np.arange(250, 350, 10, dtype=int)),
+        'subsample':hp.quniform('subsample', 0.7, 0.9, 0.1),
      #   'eta':hp.quniform('eta', 0.1, 0.3, 0.1),
         
     #    'objective':'reg:squarederror',
@@ -516,48 +467,6 @@ gridg = {
     }
 e.FitEnsembleOverEra(gridg,override = True)
 
-from google.colab import drive
-drive.mount('drive')
-
-import pandas as pd
-
-e= pd.read_csv('/content/drive/My Drive/CURRDATA/MDAdrop_feat'+str(0)+'.csv')['drop_feat1'].values
-e2=pd.read_csv('/content/drive/My Drive/CURRDATA/PIdrop_feat'+str(0)+'.csv')['drop_feat1'].values
-
-e3= pd.read_csv('/content/drive/My Drive/CURRDATA/429vera1.csv')
-
-e3= e3.drop(e,axis =1 )
-
-id =[]
-for e in e2:
-   # print(np.where(e == e2))
-    print(e2[np.where(e == e2)])
-    id.append(np.where(e == e2))
-id.shape
-
-id =np.array(id)
-id.shape = (54,1)
-
-
-
-print(len(e2))
-
-
-
-e2
-
-out_val
-
-coli = e3.drop(e,axis =1).columns
-
-pd.DataFrame([e,e2]).duplicated()
-
-
-
-e = np.array(e).reshape(-1,1)
-e2 = np.array(e2).reshape(-1,1)
-
-np.where(e == e2)
 
 e
 
